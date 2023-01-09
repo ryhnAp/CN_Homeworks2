@@ -35,6 +35,7 @@
 //   "simple-error-model.tr"
 
 #include <fstream>
+#include <vector>
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -186,7 +187,6 @@ int main (int argc, char *argv[])
    // 210 bytes at a rate of 448 Kb/s
    NS_LOG_INFO ("Create Applications.");
    uint16_t port = 9;   // Discard port (RFC 863)
-   // uint16_t TCP_port = 10;   // Discard port (RFC 863)
 
    OnOffHelper onoff ("ns3::UdpSocketFactory",
                       Address (InetSocketAddress (i0i3.GetAddress (1), port)));
@@ -236,77 +236,107 @@ int main (int argc, char *argv[])
    //
    // Create an ErrorModel based on the implementation (constructor)
    // specified by the default TypeId
+   uint16_t TCP_port = 10;   // Discard port (RFC 863)
 
    //randomize 
    // std::vector<int> rand = random_packet_id(packet_size_entry);
-   // std::list<uint32_t> rand4;
-   // std::list<uint32_t> rand5;
-   // std::list<uint32_t> rand6;
+   int random_num = rand() % 3;
+   int len = packet_size_entry;
+   int res[len] = {0};
 
-   // for (int i = 0; i < packet_size_entry; i++)
-   // {
-   //    switch (rand[i])
-   //    {
-   //    case 0:
-   //       rand5.push_back(i);
-   //       rand6.push_back(i);
-   //       break;
-   //    case 1:
-   //       rand4.push_back(i);
-   //       rand6.push_back(i);
-   //       break;
-   //    case 2:
-   //       rand4.push_back(i);
-   //       rand5.push_back(i);
-   //       break;
-   //    }
-   // }
+   while (true)
+   {
+      if (len == 0)
+         break;
+
+      switch (random_num)
+      {
+      case 0:
+         res[len] = 0;
+         len --;
+         break;
+      case 1:
+         res[len] = 1;
+         len --;
+         break;
+      case 2:
+         res[len] = 2;
+         len --;
+         break;
+      }
+
+      random_num = rand() % 3;
+   }
+   std::list<uint32_t> rand4;
+   std::list<uint32_t> rand5;
+   std::list<uint32_t> rand6;
+
+   for (int i = 0; i < packet_size_entry; i++)
+   {
+      switch (res[i])
+      {
+      case 0:
+         rand5.push_back(i);
+         rand6.push_back(i);
+         break;
+      case 1:
+         rand4.push_back(i);
+         rand6.push_back(i);
+         break;
+      case 2:
+         rand4.push_back(i);
+         rand5.push_back(i);
+         break;
+      }
+      // std::cout << "i, rand[i] " << i << " " << rand[i] << std::endl;   
+   }
    
-   // ObjectFactory factory;
-   // factory.SetTypeId (errorModelType);
-   // Ptr<ErrorModel> em = factory.Create<ErrorModel> ();
-   // d3d4.Get (0)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
+   ObjectFactory factory;
+   factory.SetTypeId (errorModelType);
+   Ptr<ErrorModel> em_ = factory.Create<ErrorModel> ();
+   d3d4.Get (0)->SetAttribute ("ReceiveErrorModel", PointerValue (em_));
 
    // Now, let's use the ListErrorModel and explicitly force a loss
    // of the packets with pkt-uids = 11 and 17 on node 2, device 0
    // This time, we'll explicitly create the error model we want
-   // Ptr<ListErrorModel> pem4 = CreateObject<ListErrorModel> ();
-   // pem4->SetList (rand4);
-   // d3d4.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem4));
-   // Ptr<ListErrorModel> pem5 = CreateObject<ListErrorModel> ();
-   // pem5->SetList (rand5);
-   // d3d5.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem5));
-   // Ptr<ListErrorModel> pem6 = CreateObject<ListErrorModel> ();
-   // pem6->SetList (rand6);
-   // d3d6.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem6));
+   Ptr<ListErrorModel> pem4 = CreateObject<ListErrorModel> ();
+   pem4->SetList (rand4);
+   d3d4.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem4));
+   Ptr<ListErrorModel> pem5 = CreateObject<ListErrorModel> ();
+   pem5->SetList (rand5);
+   d3d5.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem5));
+   Ptr<ListErrorModel> pem6 = CreateObject<ListErrorModel> ();
+   pem6->SetList (rand6);
+   d3d6.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem6));
 
-   // // Create a similar flow from n3 to n1, starting at time 1.3 seconds
-   // BulkSendHelper source ("ns3::TcpSocketFactory",InetSocketAddress (i2i3.GetAddress (1), TCP_port));
+   // Create a similar flow from n3 to n1, starting at time 1.3 seconds
+   BulkSendHelper source ("ns3::TcpSocketFactory",InetSocketAddress (i2i3.GetAddress (1), TCP_port));
 
-   // // Set the amount of data to send in bytes. Zero is unlimited.
-   // ApplicationContainer sourceApps = source.Install (c.Get (3));
-   // sourceApps.Start (Seconds (1.3));
-   // sourceApps.Stop (Seconds (20));
+   // Set the amount of data to send in bytes. Zero is unlimited.
+   ApplicationContainer sourceApps = source.Install (c.Get (3));
+   sourceApps.Start (Seconds (1.3));
+   sourceApps.Stop (Seconds (20));
 
-   // // Create a PacketSinkApplication and install it on node 1.
-   // PacketSinkHelper sink_TCP ("ns3::TcpSocketFactory",
-   //                       InetSocketAddress (Ipv4Address::GetAny (), TCP_port));
-   // ApplicationContainer sinkApps = sink_TCP.Install (c.Get (4));
-   // sinkApps.Start (Seconds (1.3));
-   // sinkApps.Stop (Seconds (20));
+   // Create a PacketSinkApplication and install it on node 1.
+   PacketSinkHelper sink_TCP ("ns3::TcpSocketFactory",
+                         InetSocketAddress (Ipv4Address::GetAny (), TCP_port));
+   ApplicationContainer sinkApps = sink_TCP.Install (c.Get (4));
+   sinkApps.Start (Seconds (1.3));
+   sinkApps.Stop (Seconds (20));
 
-   // sink_TCP.SetAttribute ("Local", 
-   //                    AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
-   // sinkApps = sink_TCP.Install (c.Get (5));
-   // sinkApps.Start (Seconds (1.3));
-   // sinkApps.Stop (Seconds (20));
+   sink_TCP.SetAttribute ("Local", 
+                      AddressValue (InetSocketAddress (Ipv4Address::GetAny (), TCP_port)));
+   sinkApps = sink_TCP.Install (c.Get (5));
+   sinkApps.Start (Seconds (1.3));
+   sinkApps.Stop (Seconds (20));
 
-   // sink_TCP.SetAttribute ("Local", 
-   //                    AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
-   // sinkApps = sink_TCP.Install (c.Get (6));
-   // sinkApps.Start (Seconds (1.3));
-   // sinkApps.Stop (Seconds (20));
+   sink_TCP.SetAttribute ("Local", 
+                      AddressValue (InetSocketAddress (Ipv4Address::GetAny (), TCP_port)));
+   sinkApps = sink_TCP.Install (c.Get (6));
+   sinkApps.Start (Seconds (1.3));
+   sinkApps.Stop (Seconds (20));
 
+   // std::cout << "here " << std::endl;
 
    AsciiTraceHelper ascii;
    p2p.EnableAsciiAll (ascii.CreateFileStream ("ns3-model.tr"));
@@ -314,6 +344,8 @@ int main (int argc, char *argv[])
 
    NS_LOG_INFO ("Run Simulation.");
    Simulator::Run ();
-   // Simulator::Destroy ();
+   Simulator::Destroy ();
    NS_LOG_INFO ("Done.");
+
+   return 0;
 }
