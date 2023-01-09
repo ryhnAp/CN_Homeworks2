@@ -46,7 +46,37 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE  ("SimpleErrorModelExample");
 
- 
+std::vector<int> random_packet_id(int len)
+{
+   int random_num = rand() % 3;
+   std::vector<int> res(len);
+
+   while (true)
+   {
+      if (len == 0)
+         break;
+
+      switch (random_num)
+      {
+      case 0:
+         res[len] = 0;
+         len --;
+         break;
+      case 1:
+         res[len] = 1;
+         len --;
+         break;
+      case 2:
+         res[len] = 2;
+         len --;
+         break;
+      }
+
+      random_num = rand() % 3;
+   }
+   return res;   
+}
+
 int main (int argc, char *argv[])
 {
    // Users may find it convenient to turn on explicit debugging
@@ -96,10 +126,14 @@ int main (int argc, char *argv[])
    // topologies, we could configure a node factory.
    NS_LOG_INFO ("Create nodes.");
    NodeContainer c;
-   c.Create (udp_node_count + 1);
+   c.Create (udp_node_count + tcp_node_count + 1);
    NodeContainer n0n3 = NodeContainer (c.Get (0), c.Get (3));
    NodeContainer n1n3 = NodeContainer (c.Get (1), c.Get (3));
    NodeContainer n2n3 = NodeContainer (c.Get (2), c.Get (3));
+
+   NodeContainer n3n4 = NodeContainer (c.Get (3), c.Get (4));
+   NodeContainer n3n5 = NodeContainer (c.Get (3), c.Get (5));
+   NodeContainer n3n6 = NodeContainer (c.Get (3), c.Get (6));
 
    InternetStackHelper internet;
    internet.Install (c);
@@ -114,10 +148,14 @@ int main (int argc, char *argv[])
    NetDeviceContainer d1d3 = p2p.Install (n1n3);
    NetDeviceContainer d2d3 = p2p.Install (n2n3);
 
-   p2p.SetDeviceAttribute ("DataRate", DataRateValue (data_rate_entry));
-   p2p.SetChannelAttribute ("Delay", StringValue (delay_entry));
+   NetDeviceContainer d3d4 = p2p.Install (n3n4);
+   NetDeviceContainer d3d5 = p2p.Install (n3n5);
+   NetDeviceContainer d3d6 = p2p.Install (n3n6);
 
-   // NetDeviceContainer d3d2 = p2p.Install (n3n2);
+   // Create error model on receiver.
+   Ptr<RateErrorModel> em = CreateObject<RateErrorModel> ();
+   em->SetAttribute ("ErrorRate", DoubleValue (error_rate_entry));
+   d2d3.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
 
    // Later, we add IP addresses.
    NS_LOG_INFO ("Assign IP Addresses.");
@@ -131,6 +169,16 @@ int main (int argc, char *argv[])
    ipv4.SetBase ("10.1.3.0", "255.255.255.0");
    Ipv4InterfaceContainer i2i3 = ipv4.Assign (d2d3);
 
+   ipv4.SetBase ("10.1.4.0", "255.255.255.0");
+   Ipv4InterfaceContainer i3i4 = ipv4.Assign (d3d4);
+
+   ipv4.SetBase ("10.1.5.0", "255.255.255.0");
+   Ipv4InterfaceContainer i3i5 = ipv4.Assign (d3d5);
+
+   ipv4.SetBase ("10.1.6.0", "255.255.255.0");
+   Ipv4InterfaceContainer i3i6 = ipv4.Assign (d3d6);
+
+
    NS_LOG_INFO ("Use global routing.");
    Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
@@ -138,6 +186,7 @@ int main (int argc, char *argv[])
    // 210 bytes at a rate of 448 Kb/s
    NS_LOG_INFO ("Create Applications.");
    uint16_t port = 9;   // Discard port (RFC 863)
+   // uint16_t TCP_port = 10;   // Discard port (RFC 863)
 
    OnOffHelper onoff ("ns3::UdpSocketFactory",
                       Address (InetSocketAddress (i0i3.GetAddress (1), port)));
@@ -149,23 +198,115 @@ int main (int argc, char *argv[])
    // Create an optional packet sink to receive these packets
    PacketSinkHelper sink ("ns3::UdpSocketFactory",
                           Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
-   apps = sink.Install (c.Get (3));
-   apps.Start (Seconds (1.0));
-   apps.Stop (Seconds (10.0));
+   // apps = sink.Install (c.Get (3));
+   // apps.Start (Seconds (1.0));
+   // apps.Stop (Seconds (10.0));
 
    // Create a similar flow from n3 to n1, starting at time 1.1 seconds
    onoff.SetAttribute ("Remote", 
-                       AddressValue (InetSocketAddress (i0i3.GetAddress (0), port)));
-   apps = onoff.Install (c.Get (3));
+                       AddressValue (InetSocketAddress (i1i3.GetAddress (1), port)));
+   apps = onoff.Install (c.Get (1));
    apps.Start (Seconds (1.1));
+   apps.Stop (Seconds (10.0));
+
+   // Create a packet sink to receive these packets
+   // sink.SetAttribute ("Local", 
+   //                    AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
+   // apps = sink.Install (c.Get (3));
+   // apps.Start (Seconds (1.1));
+   // apps.Stop (Seconds (10.0));
+
+   // Create a similar flow from n3 to n1, starting at time 1.1 seconds
+   onoff.SetAttribute ("Remote", 
+                       AddressValue (InetSocketAddress (i2i3.GetAddress (1), port)));
+   apps = onoff.Install (c.Get (2));
+   apps.Start (Seconds (1.2));
    apps.Stop (Seconds (10.0));
 
    // Create a packet sink to receive these packets
    sink.SetAttribute ("Local", 
                       AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
-   apps = sink.Install (c.Get (1));
-   apps.Start (Seconds (1.1));
+   apps = sink.Install (c.Get (3));
+   apps.Start (Seconds (1.2));
    apps.Stop (Seconds (10.0));
+
+   //TCP
+   //
+   // Error model
+   //
+   // Create an ErrorModel based on the implementation (constructor)
+   // specified by the default TypeId
+
+   //randomize 
+   // std::vector<int> rand = random_packet_id(packet_size_entry);
+   // std::list<uint32_t> rand4;
+   // std::list<uint32_t> rand5;
+   // std::list<uint32_t> rand6;
+
+   // for (int i = 0; i < packet_size_entry; i++)
+   // {
+   //    switch (rand[i])
+   //    {
+   //    case 0:
+   //       rand5.push_back(i);
+   //       rand6.push_back(i);
+   //       break;
+   //    case 1:
+   //       rand4.push_back(i);
+   //       rand6.push_back(i);
+   //       break;
+   //    case 2:
+   //       rand4.push_back(i);
+   //       rand5.push_back(i);
+   //       break;
+   //    }
+   // }
+   
+   // ObjectFactory factory;
+   // factory.SetTypeId (errorModelType);
+   // Ptr<ErrorModel> em = factory.Create<ErrorModel> ();
+   // d3d4.Get (0)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
+
+   // Now, let's use the ListErrorModel and explicitly force a loss
+   // of the packets with pkt-uids = 11 and 17 on node 2, device 0
+   // This time, we'll explicitly create the error model we want
+   // Ptr<ListErrorModel> pem4 = CreateObject<ListErrorModel> ();
+   // pem4->SetList (rand4);
+   // d3d4.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem4));
+   // Ptr<ListErrorModel> pem5 = CreateObject<ListErrorModel> ();
+   // pem5->SetList (rand5);
+   // d3d5.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem5));
+   // Ptr<ListErrorModel> pem6 = CreateObject<ListErrorModel> ();
+   // pem6->SetList (rand6);
+   // d3d6.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem6));
+
+   // // Create a similar flow from n3 to n1, starting at time 1.3 seconds
+   // BulkSendHelper source ("ns3::TcpSocketFactory",InetSocketAddress (i2i3.GetAddress (1), TCP_port));
+
+   // // Set the amount of data to send in bytes. Zero is unlimited.
+   // ApplicationContainer sourceApps = source.Install (c.Get (3));
+   // sourceApps.Start (Seconds (1.3));
+   // sourceApps.Stop (Seconds (20));
+
+   // // Create a PacketSinkApplication and install it on node 1.
+   // PacketSinkHelper sink_TCP ("ns3::TcpSocketFactory",
+   //                       InetSocketAddress (Ipv4Address::GetAny (), TCP_port));
+   // ApplicationContainer sinkApps = sink_TCP.Install (c.Get (4));
+   // sinkApps.Start (Seconds (1.3));
+   // sinkApps.Stop (Seconds (20));
+
+   // sink_TCP.SetAttribute ("Local", 
+   //                    AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
+   // sinkApps = sink_TCP.Install (c.Get (5));
+   // sinkApps.Start (Seconds (1.3));
+   // sinkApps.Stop (Seconds (20));
+
+   // sink_TCP.SetAttribute ("Local", 
+   //                    AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
+   // sinkApps = sink_TCP.Install (c.Get (6));
+   // sinkApps.Start (Seconds (1.3));
+   // sinkApps.Stop (Seconds (20));
+
 
    AsciiTraceHelper ascii;
    p2p.EnableAsciiAll (ascii.CreateFileStream ("ns3-model.tr"));
