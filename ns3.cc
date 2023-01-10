@@ -408,8 +408,8 @@ int main (int argc, char *argv[])
 
 
    AsciiTraceHelper ascii;
-   p2p.EnableAsciiAll (ascii.CreateFileStream ("ns3-model.tr"));
-   p2p.EnablePcapAll ("ns3-model");
+   p2p.EnableAsciiAll (ascii.CreateFileStream ("out.tr"));
+   p2p.EnablePcapAll ("out");
 
    Simulator::Stop (Seconds (20));
    Simulator::Run ();
