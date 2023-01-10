@@ -1,0 +1,10 @@
+./waf --run "scratch/ns3 --er=0.0 --bw=1 --o=0"
+./waf --run "scratch/ns3 --er=0.001 --bw=1 --o=1"
+./waf --run "scratch/ns3 --er=0.0001 --bw=1 --o=2"
+./waf --run "scratch/ns3 --er=0.00001 --bw=1 --o=3"
+./waf --run "scratch/ns3 --er=0.000001 --bw=1 --o=4"
+./waf --run "scratch/ns3 --er=0.0 --bw=1 --o=5"
+./waf --run "scratch/ns3 --er=0.0 --bw=10 --o=6"
+./waf --run "scratch/ns3 --er=0.0 --bw=100 --o=7"
+-
+python3 ns3_model.py

@@ -130,6 +130,7 @@ int main (int argc, char *argv[])
 	int packet_size_entry = 210;
 	std::string data_rate_entry = "448kb/s";
 	std::string delay_entry = "2ms";
+   std::string file_id = "";
 
 	// get values from cmd 
 	ns3::CommandLine cmd;
@@ -140,6 +141,7 @@ int main (int argc, char *argv[])
 	cmd.AddValue("ps", "packet size value", packet_size_entry);
 	cmd.AddValue("dr", "data rate value", data_rate_entry);
 	cmd.AddValue("delay", "p2p delay value", delay_entry);
+	cmd.AddValue("o", "file output name id", file_id);
 
 
    // Set a few attributes
@@ -408,7 +410,7 @@ int main (int argc, char *argv[])
 
 
    AsciiTraceHelper ascii;
-   p2p.EnableAsciiAll (ascii.CreateFileStream ("out.tr"));
+   p2p.EnableAsciiAll (ascii.CreateFileStream ("out"+file_id+".tr"));
    p2p.EnablePcapAll ("out");
 
    Simulator::Stop (Seconds (20));

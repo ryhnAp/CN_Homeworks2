@@ -60,8 +60,40 @@ def end_to_end_delay(filename):
     return packets_duration/max_
     
 def main():
-    print("throughput is: ", throughput("out.tr"))
-    print("average end to end delay is: ", end_to_end_delay("out.tr"))
+    throughput_err = [0.0]*5
+    throughput_bw = [0]*3
+
+    # error plot elements
+    throughput_err[0] = throughput("out0.tr")
+    throughput_err[1] = throughput("out1.tr")
+    throughput_err[2] = throughput("out2.tr")
+    throughput_err[3] = throughput("out3.tr")
+    throughput_err[4] = throughput("out4.tr")
+    # bandwidth plot elements
+    throughput_bw[0] = throughput("out5.tr")
+    throughput_bw[1] = throughput("out6.tr")
+    throughput_bw[2] = throughput("out7.tr")
+
+    # xpoints_error = np.array([1, 2, 3, 4, 5])
+    xpoints_error = np.array([0.0, 0.001, 0.0001, 0.00001, 0.000001])
+    xpoints_bandwidth = np.array([1, 10, 100])
+
+    plt.plot(xpoints_error, throughput_err, color='green', linestyle='dashed', linewidth = 3, marker='o', markerfacecolor='blue', markersize=12)
+    plt.xlabel('error rate')
+    plt.ylabel('throughput')
+    plt.title('vs error')
+
+    # plt.plot(xpoints_bandwidth, throughput_bw, color='green', linestyle='dashed', linewidth = 3, marker='o', markerfacecolor='blue', markersize=12) 
+    # plt.xlabel('bandwidth')
+    # plt.ylabel('throughput')
+    # plt.title('vs bandwidth')
+    plt.show()
+
+    # print(throughput_err)
+    # print(throughput_bw)
+
+    # print("throughput is: ", throughput("out.tr"))
+    # print("average end to end delay is: ", end_to_end_delay("out.tr"))
 
 if __name__ == '__main__':
     main()
