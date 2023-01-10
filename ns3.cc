@@ -43,6 +43,17 @@
 #include "ns3/applications-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
 
+#include "ns3/packet-sink.h"
+#include "ns3/error-model.h"
+#include "ns3/tcp-header.h"
+#include "ns3/udp-header.h"
+#include "ns3/enum.h"
+#include "ns3/event-id.h"
+#include "ns3/flow-monitor-helper.h"
+#include "ns3/traffic-control-module.h"
+#include "ns3/flow-monitor-module.h"
+#include "ns3/gnuplot.h"
+
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE  ("SimpleErrorModelExample");
@@ -76,6 +87,31 @@ std::vector<int> random_packet_id(int len)
       random_num = rand() % 3;
    }
    return res;   
+}
+
+void ThroughputMonitor (FlowMonitorHelper *fmhelper, Ptr<FlowMonitor> flowMon,Gnuplot2dDataset DataSet)
+{
+  double localThrou = 0;
+  std::map<FlowId, FlowMonitor::FlowStats> flowStats = flowMon->GetFlowStats ();
+  Ptr<Ipv4FlowClassifier> classing = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
+  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator stats = flowStats.begin (); stats != flowStats.end (); ++stats)
+    {
+      Ipv4FlowClassifier::FiveTuple fiveTuple = classing->FindFlow (stats->first);
+      std::cout << "Flow ID			: "<< stats->first << " ; " << fiveTuple.sourceAddress << " -----> " << fiveTuple.destinationAddress << std::endl;
+      std::cout << "Tx Packets = " << stats->second.txPackets << std::endl;
+      std::cout << "Rx Packets = " << stats->second.rxPackets << std::endl;
+      std::cout << "Duration		: "<< (stats->second.timeLastRxPacket.GetSeconds () - stats->second.timeFirstTxPacket.GetSeconds ()) << std::endl;
+      std::cout << "Last Received Packet	: "<< stats->second.timeLastRxPacket.GetSeconds () << " Seconds" << std::endl;
+      std::cout << "Throughput: " << stats->second.rxBytes * 8.0 / (stats->second.timeLastRxPacket.GetSeconds () - stats->second.timeFirstTxPacket.GetSeconds ()) / 1024 / 1024  << " Mbps" << std::endl;
+      localThrou = stats->second.rxBytes * 8.0 / (stats->second.timeLastRxPacket.GetSeconds () - stats->second.timeFirstTxPacket.GetSeconds ()) / 1024 / 1024;
+      if (stats->first == 1)
+        {
+          DataSet.Add ((double)Simulator::Now ().GetSeconds (),(double) localThrou);
+        }
+      std::cout << "---------------------------------------------------------------------------" << std::endl;
+    }
+  Simulator::Schedule (Seconds (10),&ThroughputMonitor, fmhelper, flowMon,DataSet);
+  flowMon->SerializeToXmlFile ("ThroughputMonitor.xml", true, true);
 }
 
 int main (int argc, char *argv[])
@@ -337,14 +373,57 @@ int main (int argc, char *argv[])
    sinkApps.Stop (Seconds (20));
 
    // std::cout << "here " << std::endl;
+   NS_LOG_INFO ("Run Simulation.");
+
+   std::string fileNameWithNoExtension = "FlowVSThroughput_";
+   std::string mainPlotTitle = "Flow vs Throughput";
+   std::string graphicsFileName        = fileNameWithNoExtension + ".png";
+   std::string plotFileName            = fileNameWithNoExtension + ".plt";
+   std::string plotTitle               = mainPlotTitle + ", Error: ";
+   std::string dataTitle               = "Throughput";
+
+   // Instantiate the plot and set its title.
+   Gnuplot gnuplot (graphicsFileName);
+   gnuplot.SetTitle (plotTitle);
+
+   // Make the graphics file, which the plot file will be when it
+   // is used with Gnuplot, be a PNG file.
+   gnuplot.SetTerminal ("png");
+
+   // Set the labels for each axis.
+   gnuplot.SetLegend ("Flow", "Throughput");
+
+
+   Gnuplot2dDataset dataset;
+   dataset.SetTitle (dataTitle);
+   dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+
+   // Flow monitor.
+   Ptr<FlowMonitor> flowMonitor;
+   FlowMonitorHelper flowHelper;
+   flowMonitor = flowHelper.InstallAll ();
+
+   
+   ThroughputMonitor (&flowHelper, flowMonitor, dataset);
+
 
    AsciiTraceHelper ascii;
    p2p.EnableAsciiAll (ascii.CreateFileStream ("ns3-model.tr"));
    p2p.EnablePcapAll ("ns3-model");
 
-   NS_LOG_INFO ("Run Simulation.");
+   Simulator::Stop (Seconds (20));
    Simulator::Run ();
    Simulator::Destroy ();
+
+   double e2e_delay = (1000/packet_size_entry)*((10-1.1)+(10-1.2)+(10-1.3)+(20-1.3)+(20-1.3)+(20-1.3));
+   std::cout << "..........................................................................." << std::endl;
+   std::cout << "e2e_delay = (1/n)*sigma[1, n](stop-start time)*(1000)ms = " << e2e_delay << std::endl;
+
+
+   double throughput = ((packet_size_entry*8)/((20-1)));
+   std::cout << "throughput = recvdSize/(stop-start time)*(8/1000) = " << throughput/1000 << std::endl;
+   std::cout << "..........................................................................." << std::endl;
+
    NS_LOG_INFO ("Done.");
 
    return 0;
