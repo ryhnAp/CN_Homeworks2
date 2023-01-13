@@ -8,3 +8,4 @@
 ./waf --run "scratch/ns3 --er=0.0 --bw=100 --o=7"
 -
 python3 ns3_model.py
+./waf --run "scratch/ns3" --vis
