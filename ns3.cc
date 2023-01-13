@@ -1,38 +1,3 @@
-/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
-/*
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation;
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
-
-// Network topology
-//
-//  n0
-//     \ 5 Mb/s, 2ms
-//      \          1.5Mb/s, 10ms
-//       n2 -------------------------n3
-//      /
-//     / 5 Mb/s, 2ms
-//   n1
-//
-// - all links are point-to-point links with indicated one-way BW/delay
-// - CBR/UDP flows from n0 to n3, and from n3 to n1
-// - FTP/TCP flow from n0 to n3, starting at time 1.2 to time 1.35 sec.
-// - UDP packet size of 210 bytes, with per-packet interval 0.00375 sec.
-//   (i.e., DataRate of 448,000 bps)
-// - DropTail queues 
-// - Tracing of queues and packet receptions to file 
-//   "simple-error-model.tr"
 
 #include <fstream>
 #include <vector>
@@ -143,6 +108,14 @@ int main (int argc, char *argv[])
 	cmd.AddValue("delay", "p2p delay value", delay_entry);
 	cmd.AddValue("o", "file output name id", file_id);
 
+	std::cout << "er" << "error rate value" << error_rate_entry << std::endl;
+	std::cout << "bw" << "bandwidth value" << bandwidth_entry << std::endl;
+	std::cout << "uc" << "udp node count value" << udp_node_count << std::endl;
+	std::cout << "tc" << "tcp node count value" << tcp_node_count << std::endl;
+	std::cout << "ps" << "packet size value" << packet_size_entry << std::endl;
+	std::cout << "dr" << "data rate value" << data_rate_entry << std::endl;
+	std::cout << "delay" << "p2p delay value" << delay_entry << std::endl;
+	std::cout << "o" << "file output name id" << file_id << std::endl;
 
    // Set a few attributes
    Config::SetDefault ("ns3::RateErrorModel::ErrorRate", DoubleValue (error_rate_entry));
@@ -347,17 +320,34 @@ int main (int argc, char *argv[])
    pem6->SetList (rand6);
    d3d6.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem6));
 
+
    // Create a similar flow from n3 to n1, starting at time 1.3 seconds
-   BulkSendHelper source ("ns3::TcpSocketFactory",InetSocketAddress (i2i3.GetAddress (1), TCP_port));
+   OnOffHelper source ("ns3::TcpSocketFactory",Address(InetSocketAddress (i3i4.GetAddress (1), TCP_port)));
 
    // Set the amount of data to send in bytes. Zero is unlimited.
    ApplicationContainer sourceApps = source.Install (c.Get (3));
    sourceApps.Start (Seconds (1.3));
    sourceApps.Stop (Seconds (20));
 
+
+   source.SetAttribute ("Remote",AddressValue(InetSocketAddress (i3i5.GetAddress (1), TCP_port)));
+
+   // Set the amount of data to send in bytes. Zero is unlimited.
+   sourceApps = source.Install (c.Get (3));
+   sourceApps.Start (Seconds (1.3));
+   sourceApps.Stop (Seconds (20));
+
+   source.SetAttribute("Remote",AddressValue(InetSocketAddress (i3i6.GetAddress (1), TCP_port)));
+
+   // Set the amount of data to send in bytes. Zero is unlimited.
+   sourceApps = source.Install (c.Get (3));
+   sourceApps.Start (Seconds (1.3));
+   sourceApps.Stop (Seconds (20));
+
+
    // Create a PacketSinkApplication and install it on node 1.
    PacketSinkHelper sink_TCP ("ns3::TcpSocketFactory",
-                         InetSocketAddress (Ipv4Address::GetAny (), TCP_port));
+                         Address (InetSocketAddress (Ipv4Address::GetAny (), TCP_port)));
    ApplicationContainer sinkApps = sink_TCP.Install (c.Get (4));
    sinkApps.Start (Seconds (1.3));
    sinkApps.Stop (Seconds (20));

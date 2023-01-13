@@ -10,7 +10,7 @@ def throughput(filename):
     for line in trace:
         words = line.split(' ')
         time = float(words[1])
-        pos = words.index("id")
+        pos = words.index("length:")
         packet_size = int(words[pos+1])
         if line.startswith('r'):
             if first:
