@@ -455,3 +455,50 @@ def end_to_end_delay(filename):
 ___
 
 ## OUTPUT
+1.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-13-41.png" >
+2.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-19-16.png" >
+3.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-19-17.png" >
+4.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-19-18.png" >
+5.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-19-20.png" >
+6.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-19-22.png" >
+7.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-19-28.png" >
+8.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-19-38.png" >
+9.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-21-04.png" >
+10.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-25-45.png" >
+11.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-53-58.png" >
+12.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-03.png" >
+13.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-04.png" >
+14.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-06.png" >
+15.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-08.png" >
+16.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-12.png" >
+17.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-14.png" >
+18.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-15.png" >
+19.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-16.png" >
+20.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-18.png" >
+21.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-21.png" >
+22.
+<img src="./IMG/Screenshot%20from%202023-01-13%2013-54-40.png" >
+
+
+
