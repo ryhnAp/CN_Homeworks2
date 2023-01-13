@@ -3,6 +3,8 @@ computer networking projects Fall 1401 - CA2:
 GOAL: In this project, we want to simulate a wireless network using the 3-ns simulation tool and analyze its various criteria.
 ___
 ## INTRO
+* ns3.cc:
+
 In the first section of the code, we set the default value for variables we want to use in the code, plus the cmd.AddValue command which gets values from the user.
 The change of values(band width and error rate), will affect Throughput and Average end-to-end delay.
 
@@ -250,6 +252,205 @@ In the next few lines, we set error receiver in load balancer. which means, node
    Ptr<ListErrorModel> pem6 = CreateObject<ListErrorModel> ();
    pem6->SetList (rand6);
    d3d6.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem6));
+```
+Finally, using ```ApplicationContainer``` and ```OnOffHelper```,  we set source = node(3) or load balancer and send data to other TCP nodes.
+Other nodes will recieve packets using ```PacketSinkHelper```.
+```cpp
+// Create a similar flow from n3 to n1, starting at time 1.3 seconds
+   OnOffHelper source ("ns3::TcpSocketFactory",Address(InetSocketAddress (i3i4.GetAddress (1), TCP_port)));
+
+   // Set the amount of data to send in bytes. Zero is unlimited.
+   ApplicationContainer sourceApps = source.Install (c.Get (3));
+   sourceApps.Start (Seconds (1.3));
+   sourceApps.Stop (Seconds (20));
+
+
+   source.SetAttribute ("Remote",AddressValue(InetSocketAddress (i3i5.GetAddress (1), TCP_port)));
+
+   // Set the amount of data to send in bytes. Zero is unlimited.
+   sourceApps = source.Install (c.Get (3));
+   sourceApps.Start (Seconds (1.3));
+   sourceApps.Stop (Seconds (20));
+
+   source.SetAttribute("Remote",AddressValue(InetSocketAddress (i3i6.GetAddress (1), TCP_port)));
+
+   // Set the amount of data to send in bytes. Zero is unlimited.
+   sourceApps = source.Install (c.Get (3));
+   sourceApps.Start (Seconds (1.3));
+   sourceApps.Stop (Seconds (20));
+
+
+   // Create a PacketSinkApplication and install it on node 1.
+   PacketSinkHelper sink_TCP ("ns3::TcpSocketFactory",
+                         Address (InetSocketAddress (Ipv4Address::GetAny (), TCP_port)));
+   ApplicationContainer sinkApps = sink_TCP.Install (c.Get (4));
+   sinkApps.Start (Seconds (1.3));
+   sinkApps.Stop (Seconds (20));
+
+   sink_TCP.SetAttribute ("Local", 
+                      AddressValue (InetSocketAddress (Ipv4Address::GetAny (), TCP_port)));
+   sinkApps = sink_TCP.Install (c.Get (5));
+   sinkApps.Start (Seconds (1.3));
+   sinkApps.Stop (Seconds (20));
+
+   sink_TCP.SetAttribute ("Local", 
+                      AddressValue (InetSocketAddress (Ipv4Address::GetAny (), TCP_port)));
+   sinkApps = sink_TCP.Install (c.Get (6));
+   sinkApps.Start (Seconds (1.3));
+   sinkApps.Stop (Seconds (20));
+```
+Using the code below we show the resualt and create output ```.tr``` files.
+```cpp
+ NS_LOG_INFO ("Run Simulation.");
+
+   std::string fileNameWithNoExtension = "FlowVSThroughput_";
+   std::string mainPlotTitle = "Flow vs Throughput";
+   std::string graphicsFileName        = fileNameWithNoExtension + ".png";
+   std::string plotFileName            = fileNameWithNoExtension + ".plt";
+   std::string plotTitle               = mainPlotTitle + ", Error: ";
+   std::string dataTitle               = "Throughput";
+
+   // Instantiate the plot and set its title.
+   Gnuplot gnuplot (graphicsFileName);
+   gnuplot.SetTitle (plotTitle);
+
+   // Make the graphics file, which the plot file will be when it
+   // is used with Gnuplot, be a PNG file.
+   gnuplot.SetTerminal ("png");
+
+   // Set the labels for each axis.
+   gnuplot.SetLegend ("Flow", "Throughput");
+
+
+   Gnuplot2dDataset dataset;
+   dataset.SetTitle (dataTitle);
+   dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+
+   // Flow monitor.
+   Ptr<FlowMonitor> flowMonitor;
+   FlowMonitorHelper flowHelper;
+   flowMonitor = flowHelper.InstallAll ();
+
+   
+   ThroughputMonitor (&flowHelper, flowMonitor, dataset);
+
+
+   AsciiTraceHelper ascii;
+   p2p.EnableAsciiAll (ascii.CreateFileStream ("out"+file_id+".tr"));
+   p2p.EnablePcapAll ("out");
+
+   Simulator::Stop (Seconds (20));
+   Simulator::Run ();
+   Simulator::Destroy ();
+
+   double e2e_delay = (1000/packet_size_entry)*((10-1.1)+(10-1.2)+(10-1.3)+(20-1.3)+(20-1.3)+(20-1.3));
+   std::cout << "..........................................................................." << std::endl;
+   std::cout << "e2e_delay = (1/n)*sigma[1, n](stop-start time)*(1000)ms = " << e2e_delay << std::endl;
+
+
+   double throughput = ((packet_size_entry*8)/((20-1)));
+   std::cout << "throughput = recvdSize/(stop-start time)*(8/1000) = " << throughput/1000 << std::endl;
+   std::cout << "..........................................................................." << std::endl;
+
+   NS_LOG_INFO ("Done.");
+```
+
+* ns3_model.py:
+
+We set  ouput id from [0-4] for error and from [5-7] for bandwidth change.
+```python
+    throughput_err = [0.0]*5
+    throughput_bw = [0]*3
+
+    # error plot elements
+    throughput_err[0] = throughput("out0.tr")
+    throughput_err[1] = throughput("out1.tr")
+    throughput_err[2] = throughput("out2.tr")
+    throughput_err[3] = throughput("out3.tr")
+    throughput_err[4] = throughput("out4.tr")
+    # bandwidth plot elements
+    throughput_bw[0] = throughput("out5.tr")
+    throughput_bw[1] = throughput("out6.tr")
+    throughput_bw[2] = throughput("out7.tr")
+```
+Then, check for different values of arguments and run ``.cc`` file and plot the output
+```python
+# xpoints_error = np.array([1, 2, 3, 4, 5])
+    xpoints_error = np.array([0.0, 0.001, 0.0001, 0.00001, 0.000001])
+    xpoints_bandwidth = np.array([1, 10, 100])
+
+    plt.plot(xpoints_error, throughput_err, color='green', linestyle='dashed', linewidth = 3, marker='o', markerfacecolor='blue', markersize=12)
+    plt.xlabel('error rate')
+    plt.ylabel('throughput')
+    plt.title('vs error')
+
+    # plt.plot(xpoints_bandwidth, throughput_bw, color='green', linestyle='dashed', linewidth = 3, marker='o', markerfacecolor='blue', markersize=12) 
+    # plt.xlabel('bandwidth')
+    # plt.ylabel('throughput')
+    # plt.title('vs bandwidth')
+    plt.show()
+```
+We also used two functions to draw graphs
+```python
+def throughput(filename):
+    trace = open(filename, 'r')
+    recvd = 0
+    start = 1e6
+    stop = 0
+    first = 1
+    for line in trace:
+        words = line.split(' ')
+        time = float(words[1])
+        pos = words.index("length:")
+        packet_size = int(words[pos+1])
+        if line.startswith('r'):
+            if first:
+                start = time
+                first = 0
+            stop = time
+            recvd += packet_size
+    throughput_val = recvd / (stop-start)*(8/1000)
+    trace.close()
+    return throughput_val
+
+def end_to_end_delay(filename):
+    trace = open(filename, 'r')
+    max_ = 0
+    for line in trace:
+        words = line.split(' ')
+        pos = words.index("id")
+        temp_id = int(words[pos+1])
+        if temp_id>max_:
+            max_ = temp_id
+    
+    starter = [-1]*(max_+1)
+    stoper = [-1]*(max_+1)
+
+    # print("max: ", max_, " size: ", len(starter))
+    tracer = open(filename, 'r')
+    for line in tracer:
+        words = line.split(' ')
+        time = float(words[1])
+        pos = words.index("id")
+        packet_id = int(words[pos+1])
+        # print("id: ", packet_id)
+        if line.startswith('+') and starter[packet_id] == -1:
+            starter[packet_id] = time
+        if line.startswith('r'):
+            stoper[packet_id] = time
+        
+    packets_duration = 0
+    for i in range(max_):
+        start = starter[i]
+        stop = stoper[i]
+        packets_duration += stop - start
+        
+    trace.close()
+    tracer.close()
+    
+    return packets_duration/max_
+    
+    
 ```
 ___
 
