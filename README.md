@@ -72,11 +72,185 @@ Direction of connctions would be identified using ```NodeContainer(source,dest)`
    NodeContainer n3n5 = NodeContainer (c.Get (3), c.Get (5));
    NodeContainer n3n6 = NodeContainer (c.Get (3), c.Get (6));
 ```
-Then we implement wireless on all the nodes.
+Then we implement wireless on all the nodes, and set up channel between nodes(wireless links between nodes).
 ```cpp
-   InternetStackHelper internet;
+InternetStackHelper internet;
    internet.Install (c);
+
+   // We create the channels first without any IP addressing information
+   NS_LOG_INFO ("Create channels.");
+   PointToPointHelper p2p;
+   p2p.SetDeviceAttribute ("DataRate", DataRateValue (data_rate_entry));
+   p2p.SetChannelAttribute ("Delay", StringValue (delay_entry));
+
+   NetDeviceContainer d0d3 = p2p.Install (n0n3);
+   NetDeviceContainer d1d3 = p2p.Install (n1n3);
+   NetDeviceContainer d2d3 = p2p.Install (n2n3);
+
+   NetDeviceContainer d3d4 = p2p.Install (n3n4);
+   NetDeviceContainer d3d5 = p2p.Install (n3n5);
+   NetDeviceContainer d3d6 = p2p.Install (n3n6);
+
 ```
-پپ
+After that we assign IP to each channel and we use ```IPv4``` in this implementation. plus, for load balancer we make arror model to see lost packets here on load balancer.
+```cpp
+   // Create error model on receiver.
+   Ptr<RateErrorModel> em = CreateObject<RateErrorModel> ();
+   em->SetAttribute ("ErrorRate", DoubleValue (error_rate_entry));
+   d2d3.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
+
+// Later, we add IP addresses.
+   NS_LOG_INFO ("Assign IP Addresses.");
+   Ipv4AddressHelper ipv4;
+   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
+   Ipv4InterfaceContainer i0i3 = ipv4.Assign (d0d3);
+
+   ipv4.SetBase ("10.1.2.0", "255.255.255.0");
+   Ipv4InterfaceContainer i1i3 = ipv4.Assign (d1d3);
+
+   ipv4.SetBase ("10.1.3.0", "255.255.255.0");
+   Ipv4InterfaceContainer i2i3 = ipv4.Assign (d2d3);
+
+   ipv4.SetBase ("10.1.4.0", "255.255.255.0");
+   Ipv4InterfaceContainer i3i4 = ipv4.Assign (d3d4);
+
+   ipv4.SetBase ("10.1.5.0", "255.255.255.0");
+   Ipv4InterfaceContainer i3i5 = ipv4.Assign (d3d5);
+
+   ipv4.SetBase ("10.1.6.0", "255.255.255.0");
+   Ipv4InterfaceContainer i3i6 = ipv4.Assign (d3d6);
+
+   NS_LOG_INFO ("Use global routing.");
+   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+```
+Then, Create the OnOff application in two parts one part from UDP nodes to the load balancer and apart from the load balancer to TCP nodes.
+Using ```OnOffHelper``` and a specific port we send UDP packets to load balancer. ```sink()``` will help to recieve packets.
+```cpp
+   NS_LOG_INFO ("Create Applications.");
+   uint16_t port = 9;   // Discard port (RFC 863)
+
+   OnOffHelper onoff ("ns3::UdpSocketFactory",
+                      Address (InetSocketAddress (i0i3.GetAddress (1), port)));
+   onoff.SetConstantRate (DataRate (data_rate_entry));
+   ApplicationContainer apps = onoff.Install (c.Get (0));
+   apps.Start (Seconds (1.0));
+   apps.Stop (Seconds (10.0));
+
+   // Create an optional packet sink to receive these packets
+   PacketSinkHelper sink ("ns3::UdpSocketFactory",
+                          Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
+   // apps = sink.Install (c.Get (3));
+   // apps.Start (Seconds (1.0));
+   // apps.Stop (Seconds (10.0));
+
+   // Create a similar flow from n3 to n1, starting at time 1.1 seconds
+   onoff.SetAttribute ("Remote", 
+                       AddressValue (InetSocketAddress (i1i3.GetAddress (1), port)));
+   apps = onoff.Install (c.Get (1));
+   apps.Start (Seconds (1.1));
+   apps.Stop (Seconds (10.0));
+
+   // Create a packet sink to receive these packets
+   // sink.SetAttribute ("Local", 
+   //                    AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
+   // apps = sink.Install (c.Get (3));
+   // apps.Start (Seconds (1.1));
+   // apps.Stop (Seconds (10.0));
+
+   // Create a similar flow from n3 to n1, starting at time 1.1 seconds
+   onoff.SetAttribute ("Remote", 
+                       AddressValue (InetSocketAddress (i2i3.GetAddress (1), port)));
+   apps = onoff.Install (c.Get (2));
+   apps.Start (Seconds (1.2));
+   apps.Stop (Seconds (10.0));
+
+   // Create a packet sink to receive these packets
+   sink.SetAttribute ("Local", 
+                      AddressValue (InetSocketAddress (Ipv4Address::GetAny (), port)));
+   apps = sink.Install (c.Get (3));
+   apps.Start (Seconds (1.2));
+   apps.Stop (Seconds (10.0));
+```
+The second part of the application as mentioned above is TCP nodes. Here, we use  ```rand()``` to find a random number and between the id range between [0-2], we assign packets to nodes number from [4-6]. Here using three vectors:
+```   
+   std::list<uint32_t> rand4;
+   std::list<uint32_t> rand5;
+   std::list<uint32_t> rand6;
+ ```
+ we set value of packets should be lost in the recievers. for example in the below code and case 1, we set node 5 receive packet and two other nodes (4 & 6), should lost the packet.
+```cpp
+ int random_num = rand() % 3;
+   int len = packet_size_entry;
+   int res[len] = {0};
+
+   while (true)
+   {
+      if (len == 0)
+         break;
+
+      switch (random_num)
+      {
+      case 0:
+         res[len] = 0;
+         len --;
+         break;
+      case 1:
+         res[len] = 1;
+         len --;
+         break;
+      case 2:
+         res[len] = 2;
+         len --;
+         break;
+      }
+
+      random_num = rand() % 3;
+   }
+   std::list<uint32_t> rand4;
+   std::list<uint32_t> rand5;
+   std::list<uint32_t> rand6;
+
+   for (int i = 0; i < packet_size_entry; i++)
+   {
+      switch (res[i])
+      {
+      case 0:
+         rand5.push_back(i);
+         rand6.push_back(i);
+         break;
+      case 1:
+         rand4.push_back(i);
+         rand6.push_back(i);
+         break;
+      case 2:
+         rand4.push_back(i);
+         rand5.push_back(i);
+         break;
+      }
+      // std::cout << "i, rand[i] " << i << " " << rand[i] << std::endl;   
+   }
+   
+```
+In the next few lines, we set error receiver in load balancer. which means, nodes 3 (load balancer) will send packet with ```lost packets error model``` to the receivers.
+
+```cpp
+   ObjectFactory factory;
+   factory.SetTypeId (errorModelType);
+   Ptr<ErrorModel> em_ = factory.Create<ErrorModel> ();
+   d3d4.Get (0)->SetAttribute ("ReceiveErrorModel", PointerValue (em_));
+   // Now, let's use the ListErrorModel and explicitly force a loss
+   // of the packets with pkt-uids = 11 and 17 on node 2, device 0
+   // This time, we'll explicitly create the error model we want
+   Ptr<ListErrorModel> pem4 = CreateObject<ListErrorModel> ();
+   pem4->SetList (rand4);
+   d3d4.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem4));
+   Ptr<ListErrorModel> pem5 = CreateObject<ListErrorModel> ();
+   pem5->SetList (rand5);
+   d3d5.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem5));
+   Ptr<ListErrorModel> pem6 = CreateObject<ListErrorModel> ();
+   pem6->SetList (rand6);
+   d3d6.Get (1)->SetAttribute ("ReceiveErrorModel", PointerValue (pem6));
+```
 ___
+
 ## OUTPUT
