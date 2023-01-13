@@ -473,6 +473,36 @@ ___
 <img src="./IMG/Screenshot%20from%202023-01-13%2013-19-38.png" >
 9.
 <img src="./IMG/Screenshot%20from%202023-01-13%2013-21-04.png" >
+    
+In order to be able to obtain the throughput for different error rates, we run CC for each and produce its outputs, which in the project environment have this status:    
+
+Now we execute the throughput function for all the different trs we obtained, we store the result of each execution that is throughput output in a list of throughput outputs so that we can plot and analyze the output graph for this list.    
+
+Implementation of the throughput algorithm: First, we read the tr output file, which is the CC output and summarizes the network status, and store it in the trace variable. We look at the recvdSize variable to sum up the total number of bytes sent. startTime is a variable that stores the start time of the network operation. At the beginning, it is seen that it has a value of 1e6 to be the maximum value.    
+If the network is sending (starting with the character 'r' which means receiving), it passes the condition and sends the packet. So we save the starting time of the whole network.    
+  stopTime is a variable that stores the time of the last packet that entered the link and has the minimum input size and was sent to the destination (starting with the character 'r' which means receive).    
+We read all the lines of the input tr output file, if this line is a sign of the arrival of a packet (both sending and receiving), then it means that a new packet is transmitted, so we must save the time when this packet is sent (if it was the starting time for the first and We save the last time and if it was the final time of the network, we always update it according to the next lines of tr output).    
+According to the tr output structure, the length dimension of the data is the size of the packet. We save the second line data that represents the time. Finally, we have the start and end time of placing the data packet with the input size and we calculate it according to the throughput formula and close the input tr output file and send the calculation result.    
+
+Throughput formula:    
+‍`
+average throughput = (recvdSize/(stopTime-startTime))*(8/1000)    
+recvdSize = Store received packet's size    
+stopTime = Simulation stop time    
+startTime = Simulation start time    
+‍`    
+********************* Throughput output *********************    
+
+The plot shown is for the rate of said errors.    
+We can see that the smaller the error rate, the greater the throughput.    
+    
+average end-to-end-delay:     
+<img src="./IMG/Image%2010.png" >
+
+First, we open the desired trace file. There is a _max variable whose task is to find the maximum number of transmitted packets, which is implemented in the same way as the previous part of this request. Two arrays of packet transfer start and end times are created, which have a default value of -1, and the length of these two arrays is equal to the number of packets. Then we read all the lines of the file again and while reading the lines, we save the data of each line in words, then we find the value of the sequence number, similar to the previous sections, now according to the sending status (starting with the character 'R' which means receiving) and The first time its time is set (start_time[seq_num-1] == -1) we save the start time of this packet, we always update the final time of receiving the packet.    
+We define the variable packet_duration and add the transmission time of all packets in this variable. Finally, this number and the number of _max packets will be the denominator of our average end-to-end delay fraction.
+And after division we return the final value.    
+
 10.
 <img src="./IMG/Screenshot%20from%202023-01-13%2013-25-45.png" >
 11.
@@ -499,6 +529,6 @@ ___
 <img src="./IMG/Screenshot%20from%202023-01-13%2013-54-21.png" >
 22.
 <img src="./IMG/Screenshot%20from%202023-01-13%2013-54-40.png" >
-
-
-
+    
+If we increase bw, then throughput, average e2e delay will increase too.    
+If we increase error rate, then throughput, average e2e delay will decrease.    
